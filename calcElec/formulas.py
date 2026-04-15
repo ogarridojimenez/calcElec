@@ -4,29 +4,27 @@ from constants import *
 
 # Cache simple para resultados de fórmulas (max 128 entries)
 @lru_cache(maxsize=128)
-def _cached_calcular_ohm(modo, i, r):
+def _cached_calcular_ohm(modo, v, i, r):
     """Versión cacheada de calcular_ohm"""
     if modo == "v":
-        v = i * r
-        return (v, "V", "V = I × R")
-    if modo == "i":
-        val = r / i
-        return (val, "A", "I = V / R")
-    val = i / r
-    return (val, "Ω", "R = V / I")
+        valor = i * r
+        return (valor, "V", "V = I x R")
+    elif modo == "i":
+        valor = v / r
+        return (valor, "A", "I = V / R")
+    elif modo == "r":
+        valor = v / i
+        return (valor, "Ohm", "R = V / I")
+    return (0, "V", "")
 
 def calcular_ohm(modo, vals):
     """modo: 'v','i','r' — el que se calcula"""
     try:
-        # Intentar usar cache si valores son hashables
-        if modo == "v" and "i" in vals and "r" in vals:
-            result = _cached_calcular_ohm(modo, float(vals["i"]), float(vals["r"]))
-            return {"valor": result[0], "unidad": result[1], "formula": result[2]}
-        elif modo == "i" and "v" in vals and "r" in vals:
-            result = _cached_calcular_ohm(modo, float(vals["v"]), float(vals["r"]))
-            return {"valor": result[0], "unidad": result[1], "formula": result[2]}
-        elif modo == "r" and "v" in vals and "i" in vals:
-            result = _cached_calcular_ohm(modo, float(vals["v"]), float(vals["i"]))
+        v = float(vals.get("v", 0))
+        i = float(vals.get("i", 0))
+        r = float(vals.get("r", 0))
+        if v > 0 and i > 0 and r > 0:
+            result = _cached_calcular_ohm(modo, v, i, r)
             return {"valor": result[0], "unidad": result[1], "formula": result[2]}
     except:
         pass
@@ -34,13 +32,13 @@ def calcular_ohm(modo, vals):
     # Fallback sin cache
     if modo == "v":
         v = vals["i"] * vals["r"]
-        return {"valor": v, "unidad": "V", "formula": "V = I × R"}
+        return {"valor": v, "unidad": "V", "formula": "V = I x R"}
     if modo == "i":
         i = vals["v"] / vals["r"]
         return {"valor": i, "unidad": "A", "formula": "I = V / R"}
     # r
     r = vals["v"] / vals["i"]
-    return {"valor": r, "unidad": "Ω", "formula": "R = V / I"}
+    return {"valor": r, "unidad": "Ohm", "formula": "R = V / I"}
 
 def calcular_potencia_monofasica(modo, vals):
     fp = vals["fp"]
