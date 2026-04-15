@@ -30,9 +30,15 @@ class CalculoOhm(CalculadoraBase):
         self.layout_inputs.addLayout(radio_row)
         # Inputs grid
         grid = QHBoxLayout()
-        self.inp_v = QLineEdit(); self.inp_v.setPlaceholderText("V (Voltios)")
-        self.inp_i = QLineEdit(); self.inp_i.setPlaceholderText("I (Amperios)")
-        self.inp_r = QLineEdit(); self.inp_r.setPlaceholderText("R (Ohmios)")
+        self.inp_v = QLineEdit(); self.inp_v.setPlaceholderText("V (Voltios)"); self.inp_v.setToolTip("Ingrese el voltaje en voltios")
+        self.inp_i = QLineEdit(); self.inp_i.setPlaceholderText("I (Amperios)"); self.inp_i.setToolTip("Ingrese la corriente en amperios")
+        self.inp_r = QLineEdit(); self.inp_r.setPlaceholderText("R (Ohmios)"); self.inp_r.setToolTip("Ingrese la resistencia en ohmios")
+        
+        # Add validation to inputs
+        self.inp_v.textChanged.connect(lambda: self._validate_input(self.inp_v))
+        self.inp_i.textChanged.connect(lambda: self._validate_input(self.inp_i))
+        self.inp_r.textChanged.connect(lambda: self._validate_input(self.inp_r))
+        
         for lbl_txt, inp in [("Voltaje (V)", self.inp_v), ("Corriente (A)", self.inp_i), ("Resistencia (Ω)", self.inp_r)]:
             col = QVBoxLayout()
             l = QLabel(lbl_txt); l.setObjectName("label"); col.addWidget(l)

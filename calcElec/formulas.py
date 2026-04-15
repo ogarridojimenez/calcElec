@@ -1,8 +1,37 @@
 import math
+from functools import lru_cache
 from constants import *
+
+# Cache simple para resultados de fórmulas (max 128 entries)
+@lru_cache(maxsize=128)
+def _cached_calcular_ohm(modo, i, r):
+    """Versión cacheada de calcular_ohm"""
+    if modo == "v":
+        v = i * r
+        return (v, "V", "V = I × R")
+    if modo == "i":
+        val = r / i
+        return (val, "A", "I = V / R")
+    val = i / r
+    return (val, "Ω", "R = V / I")
 
 def calcular_ohm(modo, vals):
     """modo: 'v','i','r' — el que se calcula"""
+    try:
+        # Intentar usar cache si valores son hashables
+        if modo == "v" and "i" in vals and "r" in vals:
+            result = _cached_calcular_ohm(modo, float(vals["i"]), float(vals["r"]))
+            return {"valor": result[0], "unidad": result[1], "formula": result[2]}
+        elif modo == "i" and "v" in vals and "r" in vals:
+            result = _cached_calcular_ohm(modo, float(vals["v"]), float(vals["r"]))
+            return {"valor": result[0], "unidad": result[1], "formula": result[2]}
+        elif modo == "r" and "v" in vals and "i" in vals:
+            result = _cached_calcular_ohm(modo, float(vals["v"]), float(vals["i"]))
+            return {"valor": result[0], "unidad": result[1], "formula": result[2]}
+    except:
+        pass
+    
+    # Fallback sin cache
     if modo == "v":
         v = vals["i"] * vals["r"]
         return {"valor": v, "unidad": "V", "formula": "V = I × R"}

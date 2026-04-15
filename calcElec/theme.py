@@ -288,6 +288,20 @@ QLineEdit[error="true"] {
     background-color: rgba(239, 83, 80, 0.06);
 }
 
+QLineEdit[valid="valid"] {
+    border: 2px solid #66bb6a;
+    background-color: rgba(102, 187, 106, 0.06);
+}
+
+QLineEdit[valid="invalid"] {
+    border: 2px solid #ef5350;
+    background-color: rgba(239, 83, 80, 0.1);
+}
+
+QLineEdit[valid="empty"] {
+    border: 1px solid #b0bec5;
+}
+
 QLineEdit::placeholder {
     color: #90a4ae;
 }
@@ -839,6 +853,20 @@ QLineEdit:disabled {
 QLineEdit[error="true"] {
     border: 1px solid #ef5350;
     background-color: rgba(239, 83, 80, 0.08);
+}
+
+QLineEdit[valid="valid"] {
+    border: 2px solid #66bb6a;
+    background-color: rgba(102, 187, 106, 0.1);
+}
+
+QLineEdit[valid="invalid"] {
+    border: 2px solid #ef5350;
+    background-color: rgba(239, 83, 80, 0.15);
+}
+
+QLineEdit[valid="empty"] {
+    border: 1px solid rgba(255, 255, 255, 0.18);
 }
 
 QLineEdit::placeholder {

@@ -6,6 +6,8 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt
 from datetime import datetime
 from animations import FadeAnimation, SlideAnimation, ResultFrameAnimation, LoadingAnimation
+import os
+from typing import Dict, List, Optional, Any
 
 class CalculadoraBase(QWidget):
     NOMBRE = ""
@@ -150,7 +152,7 @@ class CalculadoraBase(QWidget):
         self.frame_resultado.hide()
         self.layout_main.addWidget(self.frame_resultado)
         
-        # Guard button
+        # Buttons row: Guardar | Exportar | Presets
         btn_save_row = QHBoxLayout()
         self.btn_guardar = QPushButton("[ guardar ]")
         self.btn_guardar.setObjectName("btn_guardar")
@@ -166,6 +168,21 @@ class CalculadoraBase(QWidget):
         self.btn_export.hide()
         btn_save_row.addWidget(self.btn_export)
         
+        # Preset buttons
+        self.btn_save_preset = QPushButton("[ 💾 preset ]")
+        self.btn_save_preset.setObjectName("btn_preset")
+        self.btn_save_preset.setFixedHeight(36)
+        self.btn_save_preset.clicked.connect(self._save_preset)
+        self.btn_save_preset.hide()
+        btn_save_row.addWidget(self.btn_save_preset)
+        
+        self.btn_load_preset = QPushButton("[ 📂 carga ]")
+        self.btn_load_preset.setObjectName("btn_preset")
+        self.btn_load_preset.setFixedHeight(36)
+        self.btn_load_preset.clicked.connect(self._load_preset_dialog)
+        self.btn_load_preset.hide()
+        btn_save_row.addWidget(self.btn_load_preset)
+        
         btn_save_row.addStretch()
         self.layout_main.addLayout(btn_save_row)
         
@@ -179,32 +196,61 @@ class CalculadoraBase(QWidget):
         outer.setContentsMargins(0,0,0,0)
         outer.addWidget(scroll, 1)
 
-    def add_field(self, label_text, widget, hint="", required=True):
+    def add_field(self, label_text, widget, hint="", required=True, tooltip=""):
         row = QVBoxLayout()
         row.setSpacing(6)
         lbl = QLabel(label_text + (" *" if required else ""))
         lbl.setObjectName("label")
+        if tooltip:
+            lbl.setToolTip(tooltip)
         row.addWidget(lbl)
         if hint:
             h = QLabel("💡 " + hint)
             h.setObjectName("hint_text")
             row.addWidget(h)
         
-        # Agregar validator visual si es QLineEdit
         if isinstance(widget, QLineEdit):
             widget.setPlaceholderText(hint or "Valor")
-            # Setup validation styling via QSS
             widget.setObjectName("input_field")
+            if tooltip:
+                widget.setToolTip(tooltip)
+            widget.textChanged.connect(lambda: self._validate_field(widget))
         
         row.addWidget(widget)
         self.layout_inputs.addLayout(row)
-
-    def add_field_inline(self, label_text, widget, hint=""):
+    
+    def _validate_field(self, widget):
+        """Valida visualmente un campo - borde rojo/verde"""
+        text = widget.text().strip()
+        if not text:
+            widget.setProperty("valid", "empty")
+        else:
+            try:
+                float(text)
+                widget.setProperty("valid", "valid")
+            except ValueError:
+                widget.setProperty("valid", "invalid")
+        widget.style().unpolish(widget)
+        widget.style().polish(widget)
+    
+    def add_input_field(self, name, placeholder="", hint="", tooltip=""):
+        """Helper para crear campo de entrada con validación automática"""
+        inp = QLineEdit()
+        inp.setPlaceholderText(placeholder or hint)
+        inp.setObjectName("input_field")
+        if tooltip:
+            inp.setToolTip(tooltip)
+        inp.textChanged.connect(lambda: self._validate_field(inp))
+        return inp
+    
+    def add_field_inline(self, label_text, widget, hint="", tooltip=""):
         row = QHBoxLayout()
         row.setSpacing(12)
         lbl = QLabel(label_text)
         lbl.setObjectName("label")
         lbl.setFixedWidth(250)
+        if tooltip:
+            lbl.setToolTip(tooltip)
         row.addWidget(lbl)
         row.addWidget(widget)
         if hint:
@@ -212,6 +258,27 @@ class CalculadoraBase(QWidget):
             h.setObjectName("hint_text")
             h.setFixedWidth(60)
             row.addWidget(h)
+        if isinstance(widget, QLineEdit):
+            widget.setObjectName("input_field")
+            widget.textChanged.connect(lambda: self._validate_field(widget))
+        self.layout_inputs.addLayout(row)
+        row = QHBoxLayout()
+        row.setSpacing(12)
+        lbl = QLabel(label_text)
+        lbl.setObjectName("label")
+        lbl.setFixedWidth(250)
+        if tooltip:
+            lbl.setToolTip(tooltip)
+        row.addWidget(lbl)
+        row.addWidget(widget)
+        if hint:
+            h = QLabel(hint)
+            h.setObjectName("hint_text")
+            h.setFixedWidth(60)
+            row.addWidget(h)
+        if isinstance(widget, QLineEdit):
+            widget.setObjectName("input_field")
+            widget.textChanged.connect(lambda: self._validate_field(widget))
         self.layout_inputs.addLayout(row)
 
     def add_resultado_item(self, label, valor_str, color="green"):
@@ -382,8 +449,12 @@ class CalculadoraBase(QWidget):
             ResultFrameAnimation.show_with_animation(self.frame_resultado)
             self.btn_guardar.show()
             self.btn_export.show()
+            self.btn_save_preset.show()
+            self.btn_load_preset.show()
             FadeAnimation.fade_in(self.btn_guardar, 300)
             FadeAnimation.fade_in(self.btn_export, 300)
+            FadeAnimation.fade_in(self.btn_save_preset, 300)
+            FadeAnimation.fade_in(self.btn_load_preset, 300)
             
             # Force immediate layout recalculation
             from PyQt6.QtCore import QTimer
@@ -550,6 +621,104 @@ class CalculadoraBase(QWidget):
         except Exception as e:
             if self.toast:
                 self.toast.show_toast(f"> error: {e}", "error")
+    
+    def _get_input_values(self):
+        """Get current input values as dictionary"""
+        from PyQt6.QtWidgets import QLineEdit, QComboBox, QRadioButton
+        
+        datos = {}
+        
+        def get_all_widgets(layout):
+            widgets = []
+            for i in range(layout.count()):
+                item = layout.itemAt(i)
+                if item.widget():
+                    widgets.append(item.widget())
+                elif item.layout():
+                    widgets.extend(get_all_widgets(item.layout()))
+            return widgets
+        
+        all_widgets = get_all_widgets(self.layout_inputs)
+        
+        for widget in all_widgets:
+            if isinstance(widget, QLineEdit):
+                texto = widget.text().strip()
+                placeholder = widget.placeholderText().strip()
+                if texto and placeholder not in ('Resultado', '0.0', ''):
+                    datos[placeholder] = texto
+                elif texto and not placeholder:
+                    datos[f"campo_{len([k for k in datos if k.startswith('campo_')])}"] = texto
+            elif isinstance(widget, QComboBox):
+                if widget.currentIndex() >= 0:
+                    datos[widget.objectName() or "seleccion"] = widget.currentText()
+            elif isinstance(widget, QRadioButton) and widget.isChecked():
+                datos["tipo_calculo"] = widget.text()
+        
+        return datos
+    
+    def _set_input_values(self, datos):
+        """Set input values from dictionary"""
+        from PyQt6.QtWidgets import QLineEdit, QComboBox, QRadioButton
+        
+        def get_all_widgets(layout):
+            widgets = []
+            for i in range(layout.count()):
+                item = layout.itemAt(i)
+                if item.widget():
+                    widgets.append(item.widget())
+                elif item.layout():
+                    widgets.extend(get_all_widgets(item.layout()))
+            return widgets
+        
+        all_widgets = get_all_widgets(self.layout_inputs)
+        
+        for widget in all_widgets:
+            if isinstance(widget, QLineEdit):
+                placeholder = widget.placeholderText().strip()
+                if placeholder in datos:
+                    widget.setText(datos[placeholder])
+            elif isinstance(widget, QComboBox):
+                name = widget.objectName()
+                if name and name in datos:
+                    idx = widget.findText(datos[name])
+                    if idx >= 0:
+                        widget.setCurrentIndex(idx)
+    
+    def _save_preset(self):
+        """Save current inputs as a preset"""
+        from PyQt6.QtWidgets import QInputDialog, QMessageBox
+        
+        datos = self._get_input_values()
+        if not datos:
+            if self.toast:
+                self.toast.show_toast("> no hay datos para guardar", "error")
+            return
+        
+        nombre, ok = QInputDialog.getText(self, "Guardar Preset", "Nombre del preset:")
+        if ok and nombre.strip():
+            nombre = nombre.strip()
+            save_preset(self.NOMBRE, nombre, datos)
+            if self.toast:
+                self.toast.show_toast(f"> preset '{nombre}' guardado", "success")
+    
+    def _load_preset_dialog(self):
+        """Show dialog to load a preset"""
+        from PyQt6.QtWidgets import QInputDialog, QMessageBox
+        
+        presets = get_preset_names(self.NOMBRE)
+        if not presets:
+            if self.toast:
+                self.toast.show_toast("> no hay presets guardados", "error")
+            return
+        
+        preset, ok = QInputDialog.getItem(self, "Cargar Preset", "Seleccione un preset:", presets, 0, False)
+        if ok and preset:
+            presets_all = load_all_presets()
+            datos = presets_all.get(self.NOMBRE, {}).get(preset, {})
+            if datos:
+                self._set_input_values(datos)
+                if self.toast:
+                    self.toast.show_toast(f"> preset '{preset}' cargado", "success")
 
     def build_info_box(self):
         pass
@@ -559,3 +728,47 @@ class CalculadoraBase(QWidget):
         pass
     def calcular(self):
         pass
+
+# ═══════════════════════════════════════════════════════════════════
+# PRESET SYSTEM - Save/Load configurations per calculator
+# ═══════════════════════════════════════════════════════════════════
+
+PRESETS_FILE = os.path.join(os.path.expanduser("~"), ".calcElec_presets.json")
+
+def save_preset(nombre_calc, preset_name, datos):
+    """Save a preset configuration for a calculator"""
+    import json
+    presets = load_all_presets()
+    if nombre_calc not in presets:
+        presets[nombre_calc] = {}
+    presets[nombre_calc][preset_name] = datos
+    with open(PRESETS_FILE, 'w', encoding='utf-8') as f:
+        json.dump(presets, f, ensure_ascii=False, indent=2)
+    return True
+
+def load_all_presets():
+    """Load all presets from file"""
+    import json
+    if os.path.exists(PRESETS_FILE):
+        try:
+            with open(PRESETS_FILE, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except:
+            return {}
+    return {}
+
+def get_preset_names(nombre_calc):
+    """Get list of preset names for a calculator"""
+    presets = load_all_presets()
+    return list(presets.get(nombre_calc, {}).keys())
+
+def delete_preset(nombre_calc, preset_name):
+    """Delete a preset"""
+    import json
+    presets = load_all_presets()
+    if nombre_calc in presets and preset_name in presets[nombre_calc]:
+        del presets[nombre_calc][preset_name]
+        with open(PRESETS_FILE, 'w', encoding='utf-8') as f:
+            json.dump(presets, f, ensure_ascii=False, indent=2)
+        return True
+    return False
