@@ -138,6 +138,16 @@ calcElec/
 ```
 PyQt6>=6.0
 reportlab>=4.0
+pyinstaller>=6.0
+```
+
+## Build .exe
+
+```bash
+cd calcElec
+pip install pyinstaller
+pyinstaller main.py --name CalcElec --onefile --windowed --clean
+# Output: dist/CalcElec.exe (~46MB)
 ```
 
 ## Reference
