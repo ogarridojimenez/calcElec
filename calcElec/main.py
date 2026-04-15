@@ -35,14 +35,14 @@ from toast import ToastManager
 # Professional icon mapping for each calculator
 # Format: (icon, label, class)
 MENU_GRUPOS = [
-    ("── Cálculos Básicos ──", None, None),
+    ("-- Cálculos Básicos --", None, None),
     ("⚡", "Ley de Ohm",               CalculoOhm),
     ("🔌", "Potencia Monofásica",      CalculoPotenciaMonofasica),
     ("⚡", "Potencia Trifásica",       CalculoPotenciaTrifasica),
     ("📊", "Factor de Potencia",       CalculoFactorPotencia),
     ("⚙️", "Motor Eléctrico",          CalculoMotor),
     ("🔄", "Motor por FLA",            CalculoMotorFLA),
-    ("── Distribución ──", None, None),
+    ("-- Distribución --", None, None),
     ("📉", "Caída de Tensión",         CalculoCaidaTension),
     ("📐", "Caída Tensión RX",         CalculoCaidaTensionAvanzada),
     ("📏", "Sección de Conductor",     CalculoSeccionConductor),
@@ -52,7 +52,7 @@ MENU_GRUPOS = [
     ("🔥", "Ampacidad Corregida",      CalculoAmpacidad),
     ("⬇️", "Ampacidad Enterrada",      CalculoAmpacidadD),
     ("🔧", "Selección Conduit",        CalculoConduit),
-    ("── Protección ──", None, None),
+    ("-- Protección --", None, None),
     ("🛡️", "Protección Magnetotérmica", CalculoProteccion),
     ("⏚", "Puesta a Tierra",           CalculoPuestaTierra),
     ("💥", "Cortocircuito",            CalculoCortocircuito),
@@ -69,8 +69,9 @@ class MainWindow(QMainWindow):
         self.setup_ui()
         self.toast = ToastManager(self)
         for c in self.calculadoras_widgets:
-            c.toast = self.toast
-            c.history = self.history
+            if c:  # Check if not None
+                c.toast = self.toast
+                c.history = self.history
         self.apply_theme()
 
     def setup_ui(self):
@@ -152,7 +153,7 @@ class MainWindow(QMainWindow):
         sb_layout.addWidget(self.menu)
         layout.addWidget(self.sidebar)
 
-        # Stack
+        # Stack - create all calculators at startup
         self.stack = QStackedWidget()
         for icon, label, cls in MENU_GRUPOS:
             if cls is not None:
@@ -253,6 +254,8 @@ class MainWindow(QMainWindow):
                     "<li>Historial de cálculos con exportación PDF</li>"
                     "<li>Temas claro y oscuro</li>"
                     "<li>Búsqueda rápida de calculadoras</li>"
+                    "<li>Validación visual de entradas</li>"
+                    "<li>Presets configurables</li>"
                     "</ul>"
                     "<p><b>Atajos de teclado:</b></p>"
                     "<ul>"
