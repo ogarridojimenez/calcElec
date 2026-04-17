@@ -233,15 +233,89 @@ class CalculadoraBase(QWidget):
         widget.style().unpolish(widget)
         widget.style().polish(widget)
     
-    def add_input_field(self, name, placeholder="", hint="", tooltip=""):
-        """Helper para crear campo de entrada con validación automática"""
+    def add_input_field(self, name, placeholder="", hint="", tooltip="", min_val=None, max_val=None):
+        """Helper para crear campo de entrada con validación automática
+        
+        Args:
+            name: Nombre del campo
+            placeholder: Texto de ayuda
+            hint: Pista adicional
+            tooltip: Tooltip al pasar mouse
+            min_val: Valor mínimo permitido (None = sin límite)
+            max_val: Valor máximo permitido (None = sin límite)
+        """
         inp = QLineEdit()
         inp.setPlaceholderText(placeholder or hint)
         inp.setObjectName("input_field")
         if tooltip:
             inp.setToolTip(tooltip)
-        inp.textChanged.connect(lambda: self._validate_field(inp))
+        
+        # Guardar rangos como atributo dinámico
+        inp.setProperty('min_val', min_val)
+        inp.setProperty('max_val', max_val)
+        
+        inp.textChanged.connect(lambda: self._validate_advanced(inp))
         return inp
+    
+    def _validate_advanced(self, widget):
+        """Validación avanzada con rangos y feedback visual"""
+        text = widget.text().strip()
+        
+        if not text:
+            widget.setProperty("valid", "empty")
+            widget.setToolTip("")
+        else:
+            try:
+                value = float(text)
+                min_val = widget.property('min_val')
+                max_val = widget.property('max_val')
+                
+                # Validar rango si existe
+                if min_val is not None and value < min_val:
+                    widget.setProperty("valid", "invalid")
+                    widget.setToolTip(f"Valor mínimo: {min_val}")
+                elif max_val is not None and value > max_val:
+                    widget.setProperty("valid", "invalid")
+                    widget.setToolTip(f"Valor máximo: {max_val}")
+                else:
+                    widget.setProperty("valid", "valid")
+                    widget.setToolTip("✓ Valor válido")
+            except ValueError:
+                widget.setProperty("valid", "invalid")
+                widget.setToolTip("✗ Valor numérico requerido")
+        
+        widget.style().unpolish(widget)
+        widget.style().polish(widget)
+    
+    def _validate_advanced(self, widget):
+        """Validación avanzada con rangos y feedback visual"""
+        text = widget.text().strip()
+        
+        if not text:
+            widget.setProperty("valid", "empty")
+            widget.setToolTip("")
+        else:
+            try:
+                value = float(text)
+                min_val = widget.property('min_val')
+                max_val = widget.property('max_val')
+                
+                # Validar rango si existe
+                if min_val is not None and value < min_val:
+                    widget.setProperty("valid", "invalid")
+                    widget.setToolTip(f"Valor mínimo: {min_val}")
+                elif max_val is not None and value > max_val:
+                    widget.setProperty("valid", "invalid")
+                    widget.setToolTip(f"Valor máximo: {max_val}")
+                else:
+                    widget.setProperty("valid", "valid")
+                    widget.setToolTip("✓ Valor válido")
+            except ValueError:
+                widget.setProperty("valid", "invalid")
+                widget.setToolTip("✗ Valor numérico requerido")
+        
+        widget.style().unpolish(widget)
+        widget.style().polish(widget)
     
     def add_field_inline(self, label_text, widget, hint="", tooltip=""):
         row = QHBoxLayout()
